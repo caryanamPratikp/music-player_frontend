@@ -21,10 +21,13 @@ export default function YouTubeResults({
     return (
       <div className="modern-results-wrapper">
         <div className="results-header-bar">
-          <h3 className="results-title-heading">Fetching music...</h3>
+          <div className="results-title-group">
+            <h3 className="results-title-heading">Curating your music...</h3>
+            <p className="results-subtitle">Loading high fidelity streams from the cloud</p>
+          </div>
         </div>
         <div className="modern-music-grid">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
             <div key={i} className="skeleton-music-card">
               <div className="skeleton-card-thumb" />
               <div className="skeleton-card-lines">
@@ -48,7 +51,7 @@ export default function YouTubeResults({
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
         </div>
-        <h3 className="state-heading">Search Error</h3>
+        <h3 className="state-heading">Playback Connection Error</h3>
         <p className="state-text">{error}</p>
       </div>
     );
@@ -66,26 +69,28 @@ export default function YouTubeResults({
         </div>
         <h3 className="state-heading">No Tracks Found</h3>
         <p className="state-text">
-          No songs matched "{searchQuery}". Try searching for another artist or hit song.
+          No songs matched "{searchQuery}". Try searching for another artist or popular Bollywood song.
         </p>
       </div>
     );
   }
 
-  const isTrending = searchQuery === 'Trending Hindi Songs' || !searchQuery;
+  const isTrending = searchQuery.toLowerCase().includes('trending') || !searchQuery;
 
   return (
     <div className="modern-results-wrapper">
       <div className="results-header-bar">
         <div className="results-title-group">
           <h3 className="results-title-heading">
-            {isTrending ? '🔥 Trending Hindi Songs' : `Results for "${searchQuery}"`}
+            {isTrending ? '🔥 Hot Trending Chartbusters' : `Search Results for "${searchQuery}"`}
           </h3>
           <p className="results-subtitle">
-            {isTrending ? 'Top popular Indian tracks & chartbusters' : `${results.length} songs available to stream`}
+            {isTrending
+              ? 'Handpicked top Indian tracks, viral hits & trending releases'
+              : `Found ${results.length} available tracks ready to stream`}
           </p>
         </div>
-        <span className="results-count-pill">{results.length} Tracks</span>
+        <span className="results-count-pill">{results.length} Tracks Available</span>
       </div>
 
       <div className="modern-music-grid">
@@ -117,16 +122,19 @@ export default function YouTubeResults({
                   loading="lazy"
                 />
 
+                {/* Quality badge */}
+                <span className="card-quality-badge">HD AUDIO</span>
+
                 {/* Hover / Active Play Button Overlay */}
                 <div className="card-hover-overlay">
                   <div className="hover-play-circle">
                     {isSelected && isPlaying ? (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                        <rect x="6" y="4" width="4" height="16" rx="1" />
-                        <rect x="14" y="4" width="4" height="16" rx="1" />
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16" rx="1.5" />
+                        <rect x="14" y="4" width="4" height="16" rx="1.5" />
                       </svg>
                     ) : (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '3px' }}>
                         <polygon points="6,4 20,12 6,20" />
                       </svg>
                     )}
@@ -139,6 +147,7 @@ export default function YouTubeResults({
                     <span className="eq-bar-mini e1" />
                     <span className="eq-bar-mini e2" />
                     <span className="eq-bar-mini e3" />
+                    <span className="eq-bar-mini e4" />
                   </div>
                 )}
               </div>
@@ -148,13 +157,21 @@ export default function YouTubeResults({
                 <h4 className="card-song-title" title={cleanTitle}>
                   {cleanTitle}
                 </h4>
-                <p className="card-song-artist" title={cleanChannel}>
-                  {cleanChannel}
-                </p>
+                
+                <div className="card-artist-row">
+                  <svg className="artist-note-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                  </svg>
+                  <span className="card-song-artist" title={cleanChannel}>
+                    {cleanChannel}
+                  </span>
+                </div>
 
                 <div className="card-footer-action">
                   <span className={`card-play-tag ${isSelected && isPlaying ? 'playing' : ''}`}>
-                    {isSelected && isPlaying ? 'PLAYING' : 'PLAY'}
+                    {isSelected && isPlaying ? 'PLAYING NOW' : 'STREAM TRACK'}
                   </span>
                 </div>
               </div>

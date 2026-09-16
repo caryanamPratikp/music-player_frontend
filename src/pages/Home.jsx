@@ -5,18 +5,30 @@ import YouTubeResults from '../components/YouTubeResults';
 import YouTubePlayer from '../components/YouTubePlayer';
 import SplashScreen from '../components/SplashScreen';
 
+const CATEGORIES = [
+  { id: 'trending', label: '🔥 Trending', query: 'Trending Hindi Songs 2026' },
+  { id: 'romantic', label: '💖 Romantic Melodies', query: 'Romantic Hindi Love Songs' },
+  { id: 'party', label: '⚡ Bollywood Party', query: 'Bollywood Dance Party Club Hits' },
+  { id: 'arijit', label: '🎧 Arijit Singh', query: 'Arijit Singh Best Songs' },
+  { id: 'indie', label: '🎸 Hindi Indie', query: 'Hindi Indie Pop Acoustic Songs' },
+  { id: 'lofi', label: '🌙 Midnight Lo-Fi', query: 'Bollywood Lofi Chill Beats' },
+  { id: 'punjabi', label: '🥁 Punjabi Hits', query: 'Top Punjabi Viral Hits' },
+  { id: 'sufi', label: '🕊️ Sufi & Classical', query: 'Best Sufi Hindi Songs' },
+];
+
 export default function Home() {
   // Splash Screen State
   const [showSplash, setShowSplash] = useState(true);
 
-  // Search & Player states
+  // Active Category & Search states
+  const [activeCategory, setActiveCategory] = useState('trending');
   const [searchResults, setSearchResults] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('Trending Hindi Songs');
+  const [searchQuery, setSearchQuery] = useState('Trending Hindi Songs 2026');
 
   // Backend Health state
   const [isBackendOnline, setIsBackendOnline] = useState(true);
@@ -29,7 +41,7 @@ export default function Home() {
     const initApp = async () => {
       const online = await checkBackendHealth();
       setIsBackendOnline(online);
-      handleSearch('Trending Hindi Songs', false); // false = do not auto-play on initial load
+      handleSearch('Trending Hindi Songs 2026', false);
     };
 
     initApp();
@@ -42,7 +54,7 @@ export default function Home() {
     return () => clearInterval(healthInterval);
   }, []);
 
-  // Search handler (triggered on Enter or suggestion click)
+  // Search handler
   const handleSearch = async (query, shouldAutoPlay = false) => {
     if (!query || !query.trim()) return;
     setSearchLoading(true);
@@ -58,13 +70,47 @@ export default function Home() {
         setCurrentSong(items[0]);
         setCurrentIndex(0);
         setIsPlaying(true);
+        if (playerSectionRef.current) {
+          playerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
     } catch (err) {
       console.error('Search failed:', err);
-      setSearchError(err.message || 'Unable to search songs right now.');
+      setSearchError(err.message || 'Unable to stream songs right now. Please check your connection.');
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
+    }
+  };
+
+  // Category Tab Click
+  const handleCategoryClick = (cat) => {
+    setActiveCategory(cat.id);
+    handleSearch(cat.query, false);
+  };
+
+  // Play Top Hit from Spotlight
+  const handlePlayTopHit = () => {
+    if (searchResults && searchResults.length > 0) {
+      setCurrentSong(searchResults[0]);
+      setCurrentIndex(0);
+      setIsPlaying(true);
+      if (playerSectionRef.current) {
+        playerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  // Surprise Me / Shuffle from results
+  const handleSurpriseMe = () => {
+    if (searchResults && searchResults.length > 0) {
+      const randIdx = Math.floor(Math.random() * searchResults.length);
+      setCurrentSong(searchResults[randIdx]);
+      setCurrentIndex(randIdx);
+      setIsPlaying(true);
+      if (playerSectionRef.current) {
+        playerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   };
 
@@ -74,13 +120,12 @@ export default function Home() {
     setCurrentIndex(index);
     setIsPlaying(true);
 
-    // Smoothly scroll to player on mobile or desktop
     if (playerSectionRef.current) {
       playerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  // Next Track (operates on current search result list)
+  // Next Track
   const handleNext = () => {
     if (!searchResults || searchResults.length === 0) return;
     const nextIdx = (currentIndex + 1) % searchResults.length;
@@ -89,7 +134,7 @@ export default function Home() {
     setIsPlaying(true);
   };
 
-  // Previous Track (operates on current search result list)
+  // Previous Track
   const handlePrev = () => {
     if (!searchResults || searchResults.length === 0) return;
     const prevIdx = (currentIndex - 1 + searchResults.length) % searchResults.length;
@@ -101,7 +146,7 @@ export default function Home() {
   // Manual Reload / Refresh animation handler
   const handleReload = () => {
     setShowSplash(true);
-    handleSearch('Trending Hindi Songs', false);
+    handleSearch('Trending Hindi Songs 2026', false);
   };
 
   return (
@@ -109,7 +154,7 @@ export default function Home() {
       {/* Animated Splash Screen for Page Load & Refresh */}
       {showSplash && (
         <SplashScreen
-          duration={1500}
+          duration={1400}
           onComplete={() => setShowSplash(false)}
         />
       )}
@@ -124,6 +169,20 @@ export default function Home() {
               <span className="brand-subtitle-by">by Pratik</span>
             </div>
           </div>
+
+          {/* Center Category Navigation Quick Tabs */}
+          <nav className="header-nav-tabs" aria-label="Music Categories">
+            {CATEGORIES.slice(0, 5).map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                className={`nav-tab-btn ${activeCategory === cat.id ? 'active' : ''}`}
+                onClick={() => handleCategoryClick(cat)}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </nav>
 
           <div className="header-actions">
             {/* Reload / Refresh Button */}
@@ -143,11 +202,25 @@ export default function Home() {
             </button>
 
             {/* Live API Status */}
-            <div className="header-status" title={isBackendOnline ? 'API Connected' : 'API Offline'}>
+            <div className="header-status" title={isBackendOnline ? 'API Connected & Healthy' : 'API Offline'}>
               <span className={`status-dot ${isBackendOnline ? '' : 'offline'}`} />
               <span className="status-label">{isBackendOnline ? 'Live' : 'Offline'}</span>
             </div>
           </div>
+        </div>
+
+        {/* Mobile Horizontal Category Bar */}
+        <div className="mobile-categories-strip">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              className={`mobile-cat-pill ${activeCategory === cat.id ? 'active' : ''}`}
+              onClick={() => handleCategoryClick(cat)}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
       </header>
 
@@ -170,22 +243,82 @@ export default function Home() {
           </section>
         )}
 
-        {/* SEARCH BOX SECTION (Centered and prominent) */}
-        <section className="musify-search-section">
-          {!currentSong && (
-            <div className="hero-search-intro">
-              <h2 className="hero-search-heading">What do you want to play?</h2>
-              <p className="hero-search-sub">Explore millions of Hindi songs, Bollywood hits, and regional tracks.</p>
-            </div>
-          )}
+        {/* HERO SPOTLIGHT BANNER (When player is closed or at top) */}
+        {!currentSong && (
+          <section className="musify-hero-spotlight" aria-label="Spotlight Section">
+            <div className="spotlight-glass-card">
+              <div className="spotlight-badge">
+                <span className="sparkle-icon">✨</span>
+                <span>DAILY MUSIC SPOTLIGHT</span>
+              </div>
+              <h1 className="spotlight-title">Experience Sound Without Limits</h1>
+              <p className="spotlight-description">
+                Stream non-stop Hindi chartbusters, romantic ballads, and viral tracks.
+                Featuring uninterrupted background playback and phone lock-screen controls.
+              </p>
+              <div className="spotlight-actions-row">
+                <button
+                  type="button"
+                  className="spotlight-btn primary"
+                  onClick={handlePlayTopHit}
+                  disabled={searchLoading || searchResults.length === 0}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5,3 19,12 5,21" />
+                  </svg>
+                  <span>Play Featured Hit</span>
+                </button>
 
+                <button
+                  type="button"
+                  className="spotlight-btn secondary"
+                  onClick={handleSurpriseMe}
+                  disabled={searchLoading || searchResults.length === 0}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <polyline points="16 3 21 3 21 8" />
+                    <line x1="4" y1="20" x2="21" y2="3" />
+                    <polyline points="21 16 21 21 16 21" />
+                    <line x1="15" y1="15" x2="21" y2="21" />
+                    <line x1="4" y1="4" x2="9" y2="9" />
+                  </svg>
+                  <span>Surprise Shuffle</span>
+                </button>
+              </div>
+
+              {/* Feature Perks Ribbon */}
+              <div className="spotlight-perks-ribbon">
+                <div className="perk-item">
+                  <span className="perk-check">✓</span>
+                  <span>Background Playback Ready</span>
+                </div>
+                <div className="perk-item">
+                  <span className="perk-check">✓</span>
+                  <span>Lock Screen Controls</span>
+                </div>
+                <div className="perk-item">
+                  <span className="perk-check">✓</span>
+                  <span>Device Media Rocker Synced</span>
+                </div>
+                <div className="perk-item">
+                  <span className="perk-check">✓</span>
+                  <span>High Fidelity HD Audio</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* SEARCH BOX SECTION */}
+        <section className="musify-search-section">
           <YouTubeSearch
             onSearch={(query) => handleSearch(query, true)}
             loading={searchLoading}
+            activeQuery={searchQuery}
           />
         </section>
 
-        {/* RESULTS & TRENDING HINDI SONGS SECTION (Below search box) */}
+        {/* RESULTS & TRENDING HINDI SONGS SECTION */}
         <section className="musify-results-section">
           <YouTubeResults
             results={searchResults}
@@ -199,12 +332,88 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
+      {/* STICKY BOTTOM MINI DOCKED CONTROLLER (When song is active and user scrolls) */}
+      {currentSong && (
+        <aside className="musify-docked-player" aria-label="Docked Floating Player">
+          <div className="docked-inner">
+            <div className="docked-left">
+              <img
+                src={currentSong.thumbnail || '/logo.png'}
+                alt={currentSong.title}
+                className="docked-thumb"
+              />
+              <div className="docked-text">
+                <span className="docked-title">{currentSong.title}</span>
+                <span className="docked-artist">{currentSong.channel_title}</span>
+              </div>
+            </div>
+
+            <div className="docked-center">
+              <button
+                type="button"
+                className="docked-btn"
+                onClick={handlePrev}
+                title="Previous Track"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="19,20 9,12 19,4" />
+                  <line x1="5" y1="4" x2="5" y2="20" stroke="currentColor" strokeWidth="2.5" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                className={`docked-btn master ${isPlaying ? 'playing' : ''}`}
+                onClick={() => setIsPlaying(!isPlaying)}
+                title={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}>
+                    <polygon points="6,4 20,12 6,20" />
+                  </svg>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="docked-btn"
+                onClick={handleNext}
+                title="Next Track"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5,4 15,12 5,20" />
+                  <line x1="19" y1="4" x2="19" y2="20" stroke="currentColor" strokeWidth="2.5" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="docked-right">
+              <span className="docked-bg-tag">
+                📱 Lock Screen Active
+              </span>
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* Modern Footer */}
       <footer className="musify-footer">
         <div className="footer-content">
-          <span className="footer-brand">MUSIFY</span>
-          <span className="footer-dot">•</span>
-          <span>Developed by Pratik SP</span>
+          <div className="footer-brand-col">
+            <span className="footer-brand">MUSIFY</span>
+            <span className="footer-dot">•</span>
+            <span>Developed by Pratik SP</span>
+          </div>
+          <div className="footer-badges">
+            <span className="footer-pill">⚡ MediaSession 2.0</span>
+            <span className="footer-pill">🔒 Background Audio Protected</span>
+            <span className="footer-pill">🔊 Master Media Synced</span>
+          </div>
         </div>
       </footer>
     </div>

@@ -8,6 +8,10 @@ function decodeHtml(html) {
   return txt.value;
 }
 
+// 1-second inaudible WAV audio data URI carrier
+// Keeps mobile browsers (Chrome/Safari) audio thread active in the background when minimized
+const SILENT_AUDIO_URI = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
 export default function YouTubePlayer({
   currentSong,
   currentIndex,
@@ -22,6 +26,8 @@ export default function YouTubePlayer({
   const playerRef = useRef(null);
   const containerRef = useRef(null);
   const timerRef = useRef(null);
+  const silentAudioRef = useRef(null);
+  const wakeLockRef = useRef(null);
 
   const [playerReady, setPlayerReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -29,6 +35,7 @@ export default function YouTubePlayer({
   const [volume, setVolume] = useState(85);
   const [isMuted, setIsMuted] = useState(false);
   const [playerError, setPlayerError] = useState(null);
+  const [isWakeLockActive, setIsWakeLockActive] = useState(false);
 
   // Format seconds to mm:ss
   const formatTime = (timeInSec) => {
@@ -38,7 +45,7 @@ export default function YouTubePlayer({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // 1. Load IFrame API script dynamically once
+  // 1. Load YouTube IFrame API script dynamically once
   useEffect(() => {
     if (window.YT && window.YT.Player) {
       return;
@@ -96,7 +103,19 @@ export default function YouTubePlayer({
                 onPlay();
                 setPlayerError(null);
               } else if (event.data === window.YT.PlayerState.PAUSED) {
-                onPause();
+                // If paused while document is hidden (minimized), don't immediately set isPlaying to false
+                if (!document.hidden) {
+                  onPause();
+                } else {
+                  // Attempt recovery in background
+                  setTimeout(() => {
+                    try {
+                      if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+                        playerRef.current.playVideo();
+                      }
+                    } catch (e) {}
+                  }, 300);
+                }
               } else if (event.data === window.YT.PlayerState.ENDED) {
                 onNext();
               }
@@ -154,6 +173,181 @@ export default function YouTubePlayer({
     };
   }, [isPlaying, playerReady]);
 
+  // 4. Background Audio Carrier (Keeps mobile OS audio service foregrounded)
+  useEffect(() => {
+    if (isPlaying) {
+      if (!silentAudioRef.current) {
+        const audio = new Audio(SILENT_AUDIO_URI);
+        audio.loop = true;
+        audio.volume = 0.05;
+        silentAudioRef.current = audio;
+      }
+      silentAudioRef.current.play().catch(() => {
+        // Autoplay may be queued until user interacts
+      });
+    } else {
+      if (silentAudioRef.current) {
+        silentAudioRef.current.pause();
+      }
+    }
+  }, [isPlaying]);
+
+  // 5. Screen Wake Lock (Keeps display active during playback if supported)
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        setIsWakeLockActive(true);
+        wakeLockRef.current.addEventListener('release', () => {
+          setIsWakeLockActive(false);
+        });
+      } catch (err) {
+        setIsWakeLockActive(false);
+      }
+    }
+  };
+
+  const releaseWakeLock = () => {
+    if (wakeLockRef.current) {
+      try {
+        wakeLockRef.current.release();
+      } catch (e) {}
+      wakeLockRef.current = null;
+      setIsWakeLockActive(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isPlaying) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+    return () => releaseWakeLock();
+  }, [isPlaying]);
+
+  // 6. MediaSession API: Lock Screen Controls & Device Media Rocker Hook
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentSong) {
+      return;
+    }
+
+    const cleanTitle = decodeHtml(currentSong.title);
+    const cleanChannel = decodeHtml(currentSong.channel_title);
+    const thumb = currentSong.thumbnail || '/logo.png';
+
+    navigator.mediaSession.metadata = new window.MediaMetadata({
+      title: cleanTitle,
+      artist: cleanChannel || 'Musify by Pratik',
+      album: 'Musify Streaming',
+      artwork: [
+        { src: thumb, sizes: '96x96', type: 'image/jpeg' },
+        { src: thumb, sizes: '128x128', type: 'image/jpeg' },
+        { src: thumb, sizes: '192x192', type: 'image/jpeg' },
+        { src: thumb, sizes: '256x256', type: 'image/jpeg' },
+        { src: thumb, sizes: '384x384', type: 'image/jpeg' },
+        { src: thumb, sizes: '512x512', type: 'image/jpeg' },
+      ],
+    });
+
+    // Action handlers for Lock Screen and Notification widget
+    const actions = [
+      ['play', () => {
+        if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+          playerRef.current.playVideo();
+          onPlay();
+        }
+      }],
+      ['pause', () => {
+        if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+          playerRef.current.pauseVideo();
+          onPause();
+        }
+      }],
+      ['previoustrack', () => onPrev()],
+      ['nexttrack', () => onNext()],
+      ['seekto', (details) => {
+        if (details.seekTime && playerRef.current) {
+          playerRef.current.seekTo(details.seekTime, true);
+          setCurrentTime(details.seekTime);
+        }
+      }],
+    ];
+
+    actions.forEach(([action, handler]) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch (e) {}
+    });
+
+    return () => {
+      actions.forEach(([action]) => {
+        try {
+          navigator.mediaSession.setActionHandler(action, null);
+        } catch (e) {}
+      });
+    };
+  }, [currentSong, onPlay, onPause, onNext, onPrev]);
+
+  // Sync MediaSession playback state
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+  }, [isPlaying]);
+
+  // Sync MediaSession position state for scrub bar on lock screen
+  useEffect(() => {
+    if (
+      'mediaSession' in navigator &&
+      'setPositionState' in navigator.mediaSession &&
+      duration > 0 &&
+      !isNaN(duration)
+    ) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: duration,
+          playbackRate: 1,
+          position: Math.min(Math.max(0, currentTime), duration),
+        });
+      } catch (e) {}
+    }
+  }, [currentTime, duration]);
+
+  // 7. Page Visibility Resilience (Phone minimize / app switch protection)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // App was minimized or screen locked
+        if (isPlaying && playerRef.current) {
+          if (silentAudioRef.current) {
+            silentAudioRef.current.play().catch(() => {});
+          }
+          setTimeout(() => {
+            if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+              try {
+                playerRef.current.playVideo();
+              } catch (e) {}
+            }
+          }, 350);
+        }
+      } else {
+        // App brought back to foreground
+        if (isPlaying && playerRef.current) {
+          try {
+            playerRef.current.playVideo();
+          } catch (e) {}
+        }
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isPlaying]);
+
   // Player control handlers
   const handlePlayPause = () => {
     if (!playerRef.current) return;
@@ -164,6 +358,9 @@ export default function YouTubePlayer({
       } else {
         playerRef.current.playVideo();
         onPlay();
+        if (silentAudioRef.current) {
+          silentAudioRef.current.play().catch(() => {});
+        }
       }
     } catch (e) {
       console.warn('Playback toggle error:', e);
@@ -187,6 +384,9 @@ export default function YouTubePlayer({
         playerRef.current.unMute();
         setIsMuted(false);
       }
+    }
+    if (silentAudioRef.current) {
+      silentAudioRef.current.volume = (newVol / 100) * 0.1;
     }
   };
 
@@ -216,30 +416,39 @@ export default function YouTubePlayer({
         <div ref={containerRef} id="player-embed-target" />
       </div>
 
-      {/* Top Meta Bar: Track counter & close */}
+      {/* Top Meta Bar: Track counter, Background status, close */}
       <div className="player-top-meta">
-        <div className="player-status-badge">
-          <span className={`status-dot ${isPlaying ? 'playing' : ''}`} />
-          {isPlaying ? 'NOW PLAYING' : 'PAUSED'}
+        <div className="player-meta-left">
+          <div className="player-status-badge">
+            <span className={`status-dot ${isPlaying ? 'playing' : ''}`} />
+            {isPlaying ? 'NOW STREAMING' : 'PAUSED'}
+          </div>
+
+          <div className="player-bg-mode-badge" title="Phone lock screen and media rocker controls active">
+            <span className="badge-icon">📱</span>
+            <span className="badge-text">Background & Lock Screen Ready</span>
+          </div>
         </div>
 
-        {totalResults > 0 && (
-          <span className="player-track-counter">
-            Track {currentIndex + 1} of {totalResults}
-          </span>
-        )}
+        <div className="player-meta-right">
+          {totalResults > 0 && (
+            <span className="player-track-counter">
+              Track {currentIndex + 1} of {totalResults}
+            </span>
+          )}
 
-        {onClose && (
-          <button
-            type="button"
-            className="player-close-btn"
-            onClick={onClose}
-            aria-label="Close player"
-            title="Close player"
-          >
-            &times;
-          </button>
-        )}
+          {onClose && (
+            <button
+              type="button"
+              className="player-close-btn"
+              onClick={onClose}
+              aria-label="Close player"
+              title="Close player"
+            >
+              &times;
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error alert if any */}
@@ -267,6 +476,7 @@ export default function YouTubePlayer({
                 <span className="mini-eq-bar b1" />
                 <span className="mini-eq-bar b2" />
                 <span className="mini-eq-bar b3" />
+                <span className="mini-eq-bar b4" />
               </div>
             )}
           </div>
@@ -299,7 +509,7 @@ export default function YouTubePlayer({
               onInput={handleSeek}
               className="range-slider timeline-slider"
               style={{
-                background: `linear-gradient(to right, #6366f1 0%, #ec4899 ${progressPercent}%, rgba(255,255,255,0.15) ${progressPercent}%, rgba(255,255,255,0.15) 100%)`,
+                background: `linear-gradient(to right, #00f2fe 0%, #10b981 ${progressPercent}%, rgba(255,255,255,0.12) ${progressPercent}%, rgba(255,255,255,0.12) 100%)`,
               }}
               aria-label="Seek track position"
             />
@@ -358,8 +568,8 @@ export default function YouTubePlayer({
               </button>
             </div>
 
-            {/* Sound Controller (Volume Slider) */}
-            <div className="player-volume-cluster">
+            {/* Sound Controller (Device Volume & In-App Slider) */}
+            <div className="player-volume-cluster" title="Adjust in-app volume or use your device physical volume buttons">
               <button
                 type="button"
                 className="volume-toggle-btn"
@@ -397,15 +607,18 @@ export default function YouTubePlayer({
                   onInput={handleVolumeChange}
                   className="range-slider volume-slider"
                   style={{
-                    background: `linear-gradient(to right, #6366f1 0%, #ec4899 ${isMuted ? 0 : volume}%, rgba(255,255,255,0.18) ${isMuted ? 0 : volume}%, rgba(255,255,255,0.18) 100%)`,
+                    background: `linear-gradient(to right, #00f2fe 0%, #10b981 ${isMuted ? 0 : volume}%, rgba(255,255,255,0.15) ${isMuted ? 0 : volume}%, rgba(255,255,255,0.15) 100%)`,
                   }}
                   aria-label="Sound volume controller"
                 />
               </div>
 
-              <span className="volume-percent-tag">
-                {isMuted ? 'Muted' : `${volume}%`}
-              </span>
+              <div className="volume-details-col">
+                <span className="volume-percent-tag">
+                  {isMuted ? 'Muted' : `${volume}%`}
+                </span>
+                <span className="device-vol-tip">Media Synced</span>
+              </div>
             </div>
           </div>
         </div>

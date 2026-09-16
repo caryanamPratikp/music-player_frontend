@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 
 const SUGGESTIONS = [
-  '🔥 Trending Hindi Songs',
-  'Arijit Singh',
-  'Bollywood Top Hits',
-  'Shreya Ghoshal',
-  'Romantic Hindi',
-  'Ajay Atul',
-  'Hindi Indie',
-  'Party Mix',
+  { label: '🔥 Trending Hits', query: 'Trending Hindi Songs 2026' },
+  { label: '💖 Romantic Melodies', query: 'Romantic Hindi Songs' },
+  { label: '⚡ Bollywood Party', query: 'Bollywood Dance Party Songs' },
+  { label: '🎧 Arijit Singh', query: 'Arijit Singh Best Songs' },
+  { label: '🌟 Shreya Ghoshal', query: 'Shreya Ghoshal Hits' },
+  { label: '🎸 Hindi Indie', query: 'Hindi Indie Pop Acoustic' },
+  { label: '🌙 Midnight Lo-Fi', query: 'Bollywood Lofi Chill Mashup' },
+  { label: '🥁 Punjabi Hits', query: 'Top Punjabi Songs' },
+  { label: '✨ 90s Nostalgia', query: '90s Bollywood Golden Hits' },
 ];
 
-export default function YouTubeSearch({ onSearch, loading }) {
+export default function YouTubeSearch({ onSearch, loading, activeQuery }) {
   const [query, setQuery] = useState('');
 
   const handleSubmit = (e) => {
@@ -21,10 +22,9 @@ export default function YouTubeSearch({ onSearch, loading }) {
     }
   };
 
-  const handleChipClick = (suggestion) => {
-    const cleanQuery = suggestion.replace(/^🔥\s*/, '');
-    setQuery(cleanQuery);
-    onSearch(cleanQuery);
+  const handleChipClick = (itemQuery) => {
+    setQuery(itemQuery);
+    onSearch(itemQuery);
   };
 
   return (
@@ -41,7 +41,7 @@ export default function YouTubeSearch({ onSearch, loading }) {
             className="search-text-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search Hindi songs, artists, albums, or lyrics... (Press Enter)"
+            placeholder="Search Hindi songs, artists, playlists, or lyrics... (Press Enter)"
             disabled={loading}
           />
 
@@ -70,7 +70,7 @@ export default function YouTubeSearch({ onSearch, loading }) {
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
-              <span>Search</span>
+              <span>Explore</span>
             </>
           )}
         </button>
@@ -78,17 +78,17 @@ export default function YouTubeSearch({ onSearch, loading }) {
 
       {/* Suggested Quick Filter Chips */}
       <div className="search-filter-pills-row">
-        <span className="filter-pills-label">Trending:</span>
+        <span className="filter-pills-label">Moods & Genres:</span>
         <div className="filter-pills-scroll">
-          {SUGGESTIONS.map((sugg) => (
+          {SUGGESTIONS.map((item) => (
             <button
-              key={sugg}
+              key={item.label}
               type="button"
-              className="filter-pill-btn"
-              onClick={() => handleChipClick(sugg)}
+              className={`filter-pill-btn ${activeQuery === item.query ? 'active-pill' : ''}`}
+              onClick={() => handleChipClick(item.query)}
               disabled={loading}
             >
-              {sugg}
+              {item.label}
             </button>
           ))}
         </div>
