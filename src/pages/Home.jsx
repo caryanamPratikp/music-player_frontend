@@ -204,7 +204,7 @@ export default function Home() {
         <div className="footer-content">
           <span className="footer-brand">MUSIFY</span>
           <span className="footer-dot">•</span>
-          <span>Powered by YouTube IFrame Player & FastAPI</span>
+          <span>Developed by Pratik SP</span>
         </div>
       </footer>
     </div>
