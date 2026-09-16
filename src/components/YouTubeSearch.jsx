@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 
 const SUGGESTIONS = [
+  'Trending Hindi Songs',
   'Arijit Singh',
-  'Marathi songs',
-  'Ajay Atul',
+  'Bollywood Top Hits',
   'Shreya Ghoshal',
-  'Bollywood songs',
-  'Marathi romantic songs',
-  'Hindi indie',
-  'Marathi indie',
+  'Romantic Hindi',
+  'Ajay Atul',
+  'Hindi Indie',
+  'Party Mix',
 ];
 
 export default function YouTubeSearch({ onSearch, loading }) {
@@ -40,7 +40,7 @@ export default function YouTubeSearch({ onSearch, loading }) {
             className="search-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search songs, artists, genres... (Press Enter)"
+            placeholder="Search Hindi songs, artists, albums, or lyrics... (Press Enter)"
             disabled={loading}
           />
 

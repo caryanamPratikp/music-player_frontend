@@ -76,7 +76,9 @@ export default function YouTubeResults({
     <div className="results-container">
       <div className="section-header">
         <h3 className="section-title">
-          {searchQuery ? `Songs for "${searchQuery}"` : 'Recommended Songs'}
+          {searchQuery === 'Trending Hindi Songs' || !searchQuery
+            ? '🔥 Trending Hindi Songs'
+            : `Songs for "${searchQuery}"`}
         </h3>
         <span className="song-count">{results.length} Tracks</span>
       </div>

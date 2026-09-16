@@ -17,6 +17,7 @@ export default function YouTubePlayer({
   onPause,
   onNext,
   onPrev,
+  onClose,
 }) {
   const playerRef = useRef(null);
   const containerRef = useRef(null);
@@ -240,14 +241,28 @@ export default function YouTubePlayer({
     <aside className="player-panel" aria-label="Music Player">
       {/* Player Header */}
       <div className="player-panel-header">
-        <div className="player-status-badge">
-          <span className="status-dot" />
-          NOW PLAYING
+        <div className="player-header-left">
+          <div className="player-status-badge">
+            <span className="status-dot" />
+            NOW PLAYING
+          </div>
+          {totalResults > 0 && (
+            <span className="player-track-counter">
+              {currentIndex + 1} of {totalResults}
+            </span>
+          )}
         </div>
-        {totalResults > 0 && (
-          <span className="player-track-counter">
-            {currentIndex + 1} of {totalResults}
-          </span>
+
+        {onClose && (
+          <button
+            type="button"
+            className="player-close-btn"
+            onClick={onClose}
+            aria-label="Close Player"
+            title="Minimize / Close Player"
+          >
+            &times;
+          </button>
         )}
       </div>
 
@@ -365,7 +380,7 @@ export default function YouTubePlayer({
           </button>
         </div>
 
-        {/* Volume */}
+        {/* Smooth Volume Slider */}
         <div className="player-volume-group">
           <button
             type="button"
@@ -393,15 +408,24 @@ export default function YouTubePlayer({
               </svg>
             )}
           </button>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={isMuted ? 0 : volume}
-            onChange={handleVolumeChange}
-            className="range-slider volume-slider"
-            aria-label="Volume slider"
-          />
+          
+          <div className="volume-slider-track-wrap">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={isMuted ? 0 : volume}
+              onChange={handleVolumeChange}
+              onInput={handleVolumeChange}
+              className="range-slider volume-slider"
+              style={{
+                background: `linear-gradient(to right, #6366f1 0%, #ec4899 ${isMuted ? 0 : volume}%, rgba(255,255,255,0.15) ${isMuted ? 0 : volume}%, rgba(255,255,255,0.15) 100%)`,
+              }}
+              aria-label="Volume slider"
+            />
+          </div>
+
+          <span className="volume-percent">{isMuted ? 'Muted' : `${volume}%`}</span>
         </div>
       </div>
     </aside>
