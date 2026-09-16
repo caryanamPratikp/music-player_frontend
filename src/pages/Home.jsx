@@ -117,11 +117,11 @@ export default function Home() {
       {/* Top Header / Navigation Bar */}
       <header className="musify-header">
         <div className="header-inner">
-          <div className="brand-logo" onClick={handleReload} role="button" tabIndex={0} title="MUSIFY Home">
-            <span className="brand-badge">MUSIFY</span>
+          <div className="brand-logo" onClick={handleReload} role="button" tabIndex={0} title="Musify Home">
+            <img src="/logo.png" alt="Musify Gramophone Logo" className="brand-logo-img" />
             <div className="brand-text-col">
-              <span className="brand-title">MUSIFY</span>
-              <span className="brand-subtitle">Stream Hindi & Regional Music</span>
+              <span className="brand-title">Musify</span>
+              <span className="brand-subtitle-by">by Pratik</span>
             </div>
           </div>
 

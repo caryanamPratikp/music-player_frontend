@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 const SUGGESTIONS = [
-  'Trending Hindi Songs',
+  '🔥 Trending Hindi Songs',
   'Arijit Singh',
   'Bollywood Top Hits',
   'Shreya Ghoshal',
@@ -22,22 +22,23 @@ export default function YouTubeSearch({ onSearch, loading }) {
   };
 
   const handleChipClick = (suggestion) => {
-    setQuery(suggestion);
-    onSearch(suggestion);
+    const cleanQuery = suggestion.replace(/^🔥\s*/, '');
+    setQuery(cleanQuery);
+    onSearch(cleanQuery);
   };
 
   return (
-    <div className="search-container">
-      <form className="search-form" onSubmit={handleSubmit}>
-        <div className="search-input-wrapper">
-          <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <div className="modern-search-console">
+      <form className="modern-search-bar" onSubmit={handleSubmit}>
+        <div className="search-field-wrapper">
+          <svg className="search-lens-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
 
           <input
             type="text"
-            className="search-input"
+            className="search-text-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search Hindi songs, artists, albums, or lyrics... (Press Enter)"
@@ -47,9 +48,9 @@ export default function YouTubeSearch({ onSearch, loading }) {
           {query && !loading && (
             <button
               type="button"
-              className="search-clear-btn"
+              className="search-reset-btn"
               onClick={() => setQuery('')}
-              aria-label="Clear search"
+              aria-label="Clear search query"
             >
               &times;
             </button>
@@ -58,26 +59,32 @@ export default function YouTubeSearch({ onSearch, loading }) {
 
         <button
           type="submit"
-          className="search-submit-btn"
+          className="search-action-btn"
           disabled={loading || !query.trim()}
         >
           {loading ? (
             <span className="search-spinner" />
           ) : (
-            'Search'
+            <>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <span>Search</span>
+            </>
           )}
         </button>
       </form>
 
-      {/* Suggested Quick Search Chips */}
-      <div className="search-chips-wrapper">
-        <span className="search-chips-label">Popular:</span>
-        <div className="search-chips-list">
+      {/* Suggested Quick Filter Chips */}
+      <div className="search-filter-pills-row">
+        <span className="filter-pills-label">Trending:</span>
+        <div className="filter-pills-scroll">
           {SUGGESTIONS.map((sugg) => (
             <button
               key={sugg}
               type="button"
-              className="search-chip-btn"
+              className="filter-pill-btn"
               onClick={() => handleChipClick(sugg)}
               disabled={loading}
             >
